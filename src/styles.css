@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --color-bg: #F4EFE6;
+  --color-surface: #FBF8F2;
+  --color-border: #DDD5C3;
+  --color-ink: #0F2A2E;
+  --color-muted: #35514F;
+  --color-teal: #0B6B5C;
+  --color-mint: #5EE0C1;
+  --color-amber: #F2A93B;
+  --color-coral: #E8604C;
+  --color-overdue-tint: #F6C2B9;
+  --color-overdue-card-label: #7A1F12;
+  --color-overdue-card-ink: #3D0F08;
+  --color-soon-text: #7A4B00;
+  --color-overdue-text: #9A2A1A;
+  --color-ok-pill: #CFE9E2;
+  --color-ok-pill-text: #0B4F44;
+  --color-icon-tile: #E6DFCF;
+  --radius-card: 22px;
+  --radius-button: 24px;
+  --radius-button-large: 28px;
+  --radius-status: 26px;
+  --spacing-touch: 44px;
+  --spacing-action: 48px;
+  --spacing-action-large: 56px;
+}
+
+@layer base {
+  body {
+    @apply min-h-dvh bg-bg font-sans text-ink;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-teal);
+    outline-offset: 2px;
+  }
+}
