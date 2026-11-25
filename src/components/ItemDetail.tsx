@@ -46,22 +46,24 @@ export function ItemDetail({ item, prediction, logs, today, onBack, onLog, onDel
 
   return (
     <>
-      <header className="mb-3 flex items-center justify-between">
-        <button type="button" aria-label="Back to Today" onClick={onBack}
-          className="grid size-touch place-items-center rounded-full">
-          <Icon name="back" className="size-6" />
-        </button>
-        <button type="button" aria-label="Edit item" onClick={() => setDialog('edit')}
-          className="grid size-touch place-items-center rounded-full">
-          <Icon name="edit" className="size-6" />
-        </button>
+      <header className="mb-4 lg:relative">
+        <div className="mb-3 flex items-center justify-between lg:mb-0">
+          <button type="button" aria-label="Back to Today" onClick={onBack}
+            className="grid size-touch place-items-center rounded-full lg:hidden">
+            <Icon name="back" className="size-6" />
+          </button>
+          <button type="button" aria-label="Edit item" onClick={() => setDialog('edit')}
+            className="grid size-touch place-items-center rounded-full lg:absolute lg:top-0 lg:right-0">
+            <Icon name="edit" className="size-6" />
+          </button>
+        </div>
+        <h1 className="flex items-center gap-3 text-[clamp(1.5rem,7vw,2rem)] leading-tight font-extrabold tracking-tight lg:pr-12 lg:text-[2.5rem]">
+          <span className="grid size-action shrink-0 place-items-center rounded-[14px] bg-icon-tile lg:hidden">
+            <Icon name={item.icon} className="size-6" />
+          </span>
+          <span className="min-w-0 wrap-break-word">{item.name}</span>
+        </h1>
       </header>
-      <h1 className="mb-4 flex items-center gap-3 text-[clamp(1.5rem,7vw,2rem)] leading-tight font-extrabold tracking-tight">
-        <span className="grid size-action shrink-0 place-items-center rounded-[14px] bg-icon-tile">
-          <Icon name={item.icon} className="size-6" />
-        </span>
-        <span className="min-w-0 wrap-break-word">{item.name}</span>
-      </h1>
 
       <section aria-label="Due status" className={`rounded-status p-4 sm:p-5 ${statusColors[prediction.status]}`}>
         <p className={`flex items-center gap-2 text-xs font-extrabold tracking-[0.14em] uppercase ${overdue ? 'text-overdue-card-label' : ''}`}>

@@ -2,8 +2,8 @@ import { liveQuery } from 'dexie'
 import { format } from 'date-fns'
 import { useEffect, useMemo, useState } from 'react'
 import { Add } from './components/Add'
-import { BottomNav, type Tab } from './components/BottomNav'
 import { ItemDetail } from './components/ItemDetail'
+import { Navigation, type Tab } from './components/Navigation'
 import { Settings, type ReminderPermission } from './components/Settings'
 import { Today } from './components/Today'
 import { dateKey, parseDateKey } from './data/dates'
@@ -175,7 +175,7 @@ export function App() {
     }
   }, [entries, permission, reminders, today])
   const selectedItem = entries?.find(({ item }) => item.id === selected)
-  const showingDetail = tab === 'today' && selectedItem
+  const showingDetail = tab === 'today' && selectedItem !== undefined
 
   function openItem(item: Item) {
     setSelected(item.id)
@@ -183,27 +183,42 @@ export function App() {
   }
 
   return (
-    <>
-      <main className="mx-auto max-w-[488px] px-4 pt-5 pb-36 sm:pt-6">
-        {error && <p role="alert" className="mb-4 rounded-card border border-border bg-surface p-3 text-sm text-overdue-text">{error}</p>}
-        {tab === 'today' && !selectedItem && (
-          <Today today={today} entries={entries} onOpen={openItem}
-            onDone={markDone} onAdd={() => selectTab('add')} />
-        )}
-        {showingDetail && (
-          <ItemDetail key={selectedItem.item.id} {...selectedItem} today={today}
-            logs={snapshot?.logs.filter((log) => log.itemId === selectedItem.item.id) ?? []}
-            onBack={() => { setSelected(null); window.scrollTo(0, 0) }}
-            onLog={(date) => markDone(selectedItem.item, date)} onDeleteLog={deleteLog} />
-        )}
-        {tab === 'add' && <Add today={today} items={snapshot?.items ?? null} onCustomAdded={() => selectTab('today')} />}
-        {tab === 'settings' && (
-          <Settings reminders={reminders} onChange={updateReminders} permission={permission}
-            onPermissionRequest={requestPermission} install={install}
-            onRestored={() => { setNotice(null); setError('') }} />
-        )}
+    <div className="lg:grid lg:h-dvh lg:grid-cols-[200px_minmax(0,1fr)] lg:overflow-hidden">
+      <Navigation active={tab} onSelect={selectTab} hideOnPhone={showingDetail} />
+      <main className="mx-auto max-w-[488px] px-4 pt-5 pb-36 sm:pt-6 lg:mx-0 lg:flex lg:min-h-0 lg:min-w-0 lg:max-w-none lg:flex-col lg:p-0">
+        {error && <p role="alert" className="mb-4 rounded-card border border-border bg-surface p-3 text-sm text-overdue-text lg:mx-4 lg:mt-4">{error}</p>}
+        <div key={tab} className="lg:flex lg:min-h-0 lg:flex-1">
+          <div className={`lg:block lg:w-[460px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-border lg:px-6 lg:pt-7 lg:pb-16 ${showingDetail ? 'hidden' : ''}`}>
+            {tab === 'today' && (
+              <Today today={today} entries={entries} selectedId={selected} onOpen={openItem}
+                onDone={markDone} onAdd={() => selectTab('add')} />
+            )}
+            {tab === 'add' && <Add today={today} items={snapshot?.items ?? null} onCustomAdded={() => selectTab('today')} />}
+            {tab === 'settings' && (
+              <Settings reminders={reminders} onChange={updateReminders} permission={permission}
+                onPermissionRequest={requestPermission} install={install}
+                onRestored={() => { setNotice(null); setError('') }} />
+            )}
+          </div>
+
+          {tab === 'today' && (
+            <section aria-label="Item detail" key={selectedItem?.item.id}
+              className={`lg:block lg:min-w-0 lg:flex-1 lg:overflow-y-auto lg:px-6 lg:pt-7 lg:pb-16 xl:px-12 ${selectedItem ? '' : 'hidden'}`}>
+              <div className="lg:mx-auto lg:max-w-[520px]">
+                {selectedItem ? (
+                  <ItemDetail {...selectedItem} today={today}
+                    logs={snapshot?.logs.filter((log) => log.itemId === selectedItem.item.id) ?? []}
+                    onBack={() => { setSelected(null); window.scrollTo(0, 0) }}
+                    onLog={(date) => markDone(selectedItem.item, date)} onDeleteLog={deleteLog} />
+                ) : entries && entries.length > 0 && (
+                  <p className="text-sm text-muted">Select an item to see its history.</p>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
       </main>
-      <div className={`pointer-events-none fixed inset-x-0 z-20 mx-auto max-w-[488px] px-4 ${showingDetail
+      <div className={`pointer-events-none fixed inset-x-0 z-20 mx-auto max-w-[488px] px-4 lg:bottom-4 ${showingDetail
         ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'
         : 'bottom-[calc(5rem+env(safe-area-inset-bottom))]'}`}>
         {notice && (
@@ -216,7 +231,6 @@ export function App() {
           </div>
         )}
       </div>
-      {!showingDetail && <BottomNav active={tab} onSelect={selectTab} />}
-    </>
+    </div>
   )
 }
