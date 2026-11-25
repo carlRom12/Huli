@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", system-ui, sans-serif;
   --color-bg: #F4EFE6;
   --color-surface: #FBF8F2;
   --color-border: #DDD5C3;

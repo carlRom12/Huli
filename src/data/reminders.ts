@@ -54,6 +54,7 @@ export async function checkNudge({ overdue, soon }: DueItems, now = new Date()):
   try {
     await registration.showNotification('Huli daily nudge', {
       body: counts.join(' · '),
+      icon: '/icons/huli-192.png',
       tag: 'huli-daily-nudge',
     })
   } catch {
