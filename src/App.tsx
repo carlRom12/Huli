@@ -1,15 +1,16 @@
 import { liveQuery } from 'dexie'
+import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import { BottomNav, type Tab } from './components/BottomNav'
-import { Icon } from './components/Icon'
+import { ItemDetail } from './components/ItemDetail'
 import { Today } from './components/Today'
-import { dateKey } from './data/dates'
+import { dateKey, parseDateKey } from './data/dates'
 import { db } from './data/db'
 import { predict } from './data/prediction'
 import type { Item, Log } from './data/types'
 
 type Snapshot = { items: Item[]; logs: Log[] }
-type Notice = { name: string; log: Log; expiresAt: number }
+type Notice = { action: 'record' | 'delete'; message: string; log: Log; expiresAt: number }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('today')
@@ -50,16 +51,33 @@ export function App() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
-  async function markDone(item: Item) {
+  async function markDone(item: Item, date?: string) {
     setError('')
     const now = new Date()
-    const doneOn = dateKey(now)
-    setToday(doneOn)
+    const currentDate = dateKey(now)
+    const doneOn = date ?? currentDate
+    setToday(currentDate)
     try {
       const log = await db.recordDone(item.id, doneOn, now)
-      setNotice({ name: item.name, log, expiresAt: Date.now() + 5000 })
+      const when = doneOn === currentDate ? 'today' : format(parseDateKey(doneOn), 'MMM d, yyyy')
+      setNotice({ action: 'record', message: `Logged ${item.name} for ${when}`, log, expiresAt: Date.now() + 5000 })
+      return true
     } catch {
       setError(`Couldn't log ${item.name}. Try again.`)
+      return false
+    }
+  }
+
+  async function deleteLog(log: Log) {
+    setError('')
+    try {
+      const deleted = await db.deleteLog(log.id)
+      if (deleted) {
+        const date = format(parseDateKey(deleted.doneOn), 'MMM d, yyyy')
+        setNotice({ action: 'delete', message: `Deleted log for ${date}`, log: deleted, expiresAt: Date.now() + 5000 })
+      }
+    } catch {
+      setError('Could not delete this log. Try again.')
     }
   }
 
@@ -67,9 +85,10 @@ export function App() {
     if (!notice || Date.now() >= notice.expiresAt) return
     setNotice(null)
     try {
-      await db.deleteLog(notice.log.id)
+      if (notice.action === 'delete') await db.restoreLog(notice.log)
+      else await db.deleteLog(notice.log.id)
     } catch {
-      setError(`Couldn't undo the log for ${notice.name}.`)
+      setError('Could not undo the last change.')
     }
   }
 
@@ -83,36 +102,36 @@ export function App() {
     prediction: predict(item, snapshot.logs, today),
   }))
   const selectedItem = entries?.find(({ item }) => item.id === selected)
+  const showingDetail = tab === 'today' && selectedItem
+
+  function openItem(item: Item) {
+    setSelected(item.id)
+    window.scrollTo(0, 0)
+  }
 
   return (
     <>
       <main className="mx-auto max-w-[488px] px-4 pt-5 pb-36 sm:pt-6">
         {error && <p role="alert" className="mb-4 rounded-card border border-border bg-surface p-3 text-sm text-overdue-text">{error}</p>}
         {tab === 'today' && !selectedItem && (
-          <Today today={today} entries={entries} onOpen={(item) => setSelected(item.id)}
+          <Today today={today} entries={entries} onOpen={openItem}
             onDone={markDone} onAdd={() => selectTab('add')} />
         )}
-        {tab === 'today' && selectedItem && (
-          <>
-            <button type="button" aria-label="Back to Today" onClick={() => setSelected(null)}
-              className="mb-3 grid size-touch place-items-center rounded-full">
-              <Icon name="back" className="size-5" />
-            </button>
-            <h1 className="flex items-center gap-3 text-2xl font-extrabold">
-              <span className="grid size-action shrink-0 place-items-center rounded-[13px] bg-icon-tile">
-                <Icon name={selectedItem.item.icon} className="size-6" />
-              </span>
-              {selectedItem.item.name}
-            </h1>
-          </>
+        {showingDetail && (
+          <ItemDetail key={selectedItem.item.id} {...selectedItem} today={today}
+            logs={snapshot?.logs.filter((log) => log.itemId === selectedItem.item.id) ?? []}
+            onBack={() => { setSelected(null); window.scrollTo(0, 0) }}
+            onLog={(date) => markDone(selectedItem.item, date)} onDeleteLog={deleteLog} />
         )}
         {tab === 'add' && <h1 className="text-2xl font-extrabold">Starter packs</h1>}
         {tab === 'settings' && <h1 className="text-2xl font-extrabold">Settings</h1>}
       </main>
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-[488px] px-4">
+      <div className={`pointer-events-none fixed inset-x-0 z-20 mx-auto max-w-[488px] px-4 ${showingDetail
+        ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'
+        : 'bottom-[calc(5rem+env(safe-area-inset-bottom))]'}`}>
         {notice && (
           <div className="pointer-events-auto flex min-h-action items-center justify-between gap-3 rounded-button-large bg-ink py-1 pr-2 pl-4 text-surface">
-            <p role="status" className="text-sm font-medium">Logged {notice.name} for today</p>
+            <p role="status" className="min-w-0 text-sm font-medium wrap-break-word">{notice.message}</p>
             <button type="button" onClick={undoDone}
               className="min-h-touch rounded-full px-3 text-sm font-bold text-mint focus-visible:outline-mint">
               Undo
@@ -120,7 +139,7 @@ export function App() {
           </div>
         )}
       </div>
-      <BottomNav active={tab} onSelect={selectTab} />
+      {!showingDetail && <BottomNav active={tab} onSelect={selectTab} />}
     </>
   )
 }

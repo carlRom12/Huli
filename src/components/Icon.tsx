@@ -1,6 +1,6 @@
 import type { ItemIcon } from '../data/types'
 
-type IconName = ItemIcon | 'plus' | 'settings' | 'check' | 'clock' | 'warning' | 'back'
+type IconName = ItemIcon | 'plus' | 'settings' | 'check' | 'clock' | 'warning' | 'back' | 'edit' | 'more' | 'close'
 
 const paths: Record<IconName, React.ReactNode> = {
   flame: <path d="M12 2c1 5 6 7 6 13a6 6 0 0 1-12 0c0-2 1-4 3-6 0 3 1 4 2 4 1-3 2-7 1-11Z" />,
@@ -18,6 +18,9 @@ const paths: Record<IconName, React.ReactNode> = {
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   warning: <path d="M12 3 2 21h20ZM12 9v5m0 3h.01" />,
   back: <path d="m15 5-7 7 7 7" />,
+  edit: <path d="m15 5 4 4M4 20l1-5L17 3l4 4L9 19Z" />,
+  more: <path d="M5 12h.01m7 0h.01m7 0h.01" strokeWidth="3" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
 }
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

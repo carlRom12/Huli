@@ -6,14 +6,14 @@ import { Icon } from './Icon'
 
 export type TodayEntry = { item: Item; prediction: ReturnType<typeof predict> }
 
-const statuses = {
+export const statuses = {
   overdue: { label: 'Overdue', icon: 'warning', text: 'text-overdue-text', bar: 'bg-coral' },
   soon: { label: 'Coming up', icon: 'clock', text: 'text-soon-text', bar: 'bg-amber' },
   ok: { label: 'All good', icon: 'check', text: 'text-teal', bar: 'bg-teal' },
 } as const
 const statusOrder: Status[] = ['overdue', 'soon', 'ok']
 
-function dueLabel(days: number): string {
+export function dueLabel(days: number): string {
   if (days < 0) {
     const late = Math.ceil(-days)
     return `${late} ${late === 1 ? 'day' : 'days'} overdue`
