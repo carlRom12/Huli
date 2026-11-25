@@ -1,16 +1,20 @@
 import Dexie, { type Table } from 'dexie'
+import { addDays } from 'date-fns'
 import { dateKey, parseDateKey } from './dates'
 import { seedDemoOnCreate } from './demo'
 import { itemIcons, type Item, type Log } from './types'
 
 type ItemFields = Pick<Item, 'name' | 'icon' | 'defaultIntervalDays'>
 
-function normalizeItem(fields: ItemFields): ItemFields {
+function normalizeItem(fields: ItemFields, now = new Date()): ItemFields {
   const name = fields.name.trim()
   if (!name) throw new RangeError('Enter an item name.')
   if (!itemIcons.includes(fields.icon)) throw new RangeError('Choose an item icon.')
   if (!Number.isSafeInteger(fields.defaultIntervalDays) || fields.defaultIntervalDays < 1) {
     throw new RangeError('Enter an interval of at least one day.')
+  }
+  if (!(addDays(now, fields.defaultIntervalDays).getFullYear() <= 9999)) {
+    throw new RangeError('Enter a shorter interval so Huli can calculate a due date.')
   }
   return { name, icon: fields.icon, defaultIntervalDays: fields.defaultIntervalDays }
 }
@@ -32,10 +36,10 @@ export class HuliDatabase extends Dexie {
     })
   }
 
-  async createItem(fields: ItemFields, lastDone: string | null, now = new Date()): Promise<Item> {
+  async createItem(fields: ItemFields, lastDone: string | null, now = new Date(), id: string = crypto.randomUUID()): Promise<Item> {
     const item: Item = {
-      ...normalizeItem(fields),
-      id: crypto.randomUUID(),
+      ...normalizeItem(fields, now),
+      id,
       createdAt: now.getTime(),
     }
     if (lastDone !== null) validateDoneOn(lastDone, now)

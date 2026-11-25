@@ -1,6 +1,7 @@
 import { liveQuery } from 'dexie'
 import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
+import { Add } from './components/Add'
 import { BottomNav, type Tab } from './components/BottomNav'
 import { ItemDetail } from './components/ItemDetail'
 import { Today } from './components/Today'
@@ -95,6 +96,7 @@ export function App() {
   function selectTab(nextTab: Tab) {
     setSelected(null)
     setTab(nextTab)
+    window.scrollTo(0, 0)
   }
 
   const entries = snapshot && snapshot.items.map((item) => ({
@@ -123,7 +125,7 @@ export function App() {
             onBack={() => { setSelected(null); window.scrollTo(0, 0) }}
             onLog={(date) => markDone(selectedItem.item, date)} onDeleteLog={deleteLog} />
         )}
-        {tab === 'add' && <h1 className="text-2xl font-extrabold">Starter packs</h1>}
+        {tab === 'add' && <Add today={today} items={snapshot?.items ?? null} onCustomAdded={() => selectTab('today')} />}
         {tab === 'settings' && <h1 className="text-2xl font-extrabold">Settings</h1>}
       </main>
       <div className={`pointer-events-none fixed inset-x-0 z-20 mx-auto max-w-[488px] px-4 ${showingDetail

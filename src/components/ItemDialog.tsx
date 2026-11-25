@@ -1,35 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
 import { db } from '../data/db'
 import { itemIcons, type Item, type ItemIcon } from '../data/types'
-import { Icon } from './Icon'
+import { Modal } from './Modal'
 
 const field = 'block min-h-touch w-full rounded-xl border border-border bg-bg px-3'
 const primary = 'min-h-touch rounded-full bg-teal px-4 font-bold text-surface disabled:opacity-60'
-
-function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = ref.current!
-    dialog.showModal()
-    return () => dialog.close()
-  }, [])
-
-  return (
-    <dialog ref={ref} aria-labelledby="item-dialog-title" onCancel={(event) => { event.preventDefault(); onClose() }}
-      className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-md rounded-card border border-border bg-surface p-5 text-ink backdrop:bg-ink/45">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="item-dialog-title" className="text-xl font-extrabold">{title}</h2>
-        <button type="button" aria-label="Close dialog" onClick={onClose}
-          className="grid size-touch shrink-0 place-items-center rounded-full">
-          <Icon name="close" className="size-5" />
-        </button>
-      </header>
-      {children}
-    </dialog>
-  )
-}
 
 export function DateDialog({ today, onSave, onClose }: {
   today: string

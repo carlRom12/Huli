@@ -33,6 +33,19 @@ describe('HuliDatabase', () => {
     expect(await db.logs.count()).toBe(0)
   })
 
+  it('keeps one starter item and one initial log when the same pack entry is added twice', async () => {
+    const id = 'starter:lpg'
+    const results = await Promise.allSettled([
+      db.createItem(fields, '2026-11-24', now, id),
+      db.createItem(fields, '2026-11-23', now, id),
+    ])
+    expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected'])
+    expect(await db.items.count()).toBe(1)
+    expect(await db.logs.where('itemId').equals(id).count()).toBe(1)
+    await db.updateItem(id, { ...fields, name: 'Kitchen gas' })
+    expect(await db.items.get(id)).toMatchObject({ name: 'Kitchen gas' })
+  })
+
   it('keeps same-day logs individually undoable and removes logs with their item', async () => {
     const tracked = await db.createItem(fields, '2026-11-24', now)
     const other = await db.createItem({ ...fields, name: 'Water refill' }, '2026-11-24', now)
