@@ -1,17 +1,27 @@
 import { liveQuery } from 'dexie'
 import { format } from 'date-fns'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Add } from './components/Add'
 import { BottomNav, type Tab } from './components/BottomNav'
 import { ItemDetail } from './components/ItemDetail'
+import { Settings, type ReminderPermission } from './components/Settings'
 import { Today } from './components/Today'
 import { dateKey, parseDateKey } from './data/dates'
 import { db } from './data/db'
 import { predict } from './data/prediction'
+import { defaultReminderSettings, isReminderTime, type ReminderSettings } from './data/reminderSettings'
+import { checkNudge } from './data/reminders'
 import type { Item, Log } from './data/types'
+import { useInstall } from './hooks/useInstall'
 
 type Snapshot = { items: Item[]; logs: Log[] }
 type Notice = { action: 'record' | 'delete'; message: string; log: Log; expiresAt: number }
+
+function currentPermission(): ReminderPermission {
+  return typeof Notification === 'undefined' || !('serviceWorker' in navigator)
+    ? 'unavailable'
+    : Notification.permission
+}
 
 export function App() {
   const [tab, setTab] = useState<Tab>('today')
@@ -20,6 +30,9 @@ export function App() {
   const [today, setToday] = useState(() => dateKey(new Date()))
   const [notice, setNotice] = useState<Notice | null>(null)
   const [error, setError] = useState('')
+  const [reminders, setReminders] = useState(defaultReminderSettings)
+  const [permission, setPermission] = useState(currentPermission)
+  const install = useInstall()
 
   useEffect(() => {
     const subscription = liveQuery(() =>
@@ -35,12 +48,23 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    const subscription = liveQuery(() => db.settings.get('reminders')).subscribe({
+      next: (row) => setReminders(row?.id === 'reminders' ? row.value : defaultReminderSettings),
+      error: () => setError('Huli couldn’t load your reminder settings. Refresh to try again.'),
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
     const refresh = () => setToday(dateKey(new Date()))
+    const refreshPermission = () => setPermission(currentPermission())
     const timer = window.setInterval(refresh, 30_000)
     document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refreshPermission)
     return () => {
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refreshPermission)
     }
   }, [])
 
@@ -99,10 +123,57 @@ export function App() {
     window.scrollTo(0, 0)
   }
 
-  const entries = snapshot && snapshot.items.map((item) => ({
+  async function updateReminders(changes: Partial<ReminderSettings>) {
+    if (changes.time !== undefined && !isReminderTime(changes.time)) return
+    setError('')
+    try {
+      await db.transaction('rw', db.settings, async () => {
+        const stored = await db.settings.get('reminders')
+        const current = stored?.id === 'reminders' ? stored.value : defaultReminderSettings
+        await db.settings.put({ id: 'reminders', value: { ...current, ...changes } })
+      })
+    } catch {
+      setError('Couldn’t save your reminder settings. Try again.')
+    }
+  }
+
+  async function requestPermission() {
+    setError('')
+    try {
+      if (currentPermission() === 'default') setPermission(await Notification.requestPermission())
+    } catch {
+      setError('Couldn’t request notification permission in this session.')
+    }
+  }
+
+  const entries = useMemo(() => snapshot && snapshot.items.map((item) => ({
     item,
     prediction: predict(item, snapshot.logs, today),
-  }))
+  })), [snapshot, today])
+
+  useEffect(() => {
+    if (!entries) return
+    const due = {
+      overdue: entries.filter(({ prediction }) => prediction.status === 'overdue').map(({ item }) => item.id),
+      soon: entries.filter(({ prediction }) => prediction.status === 'soon').map(({ item }) => item.id),
+    }
+    const check = () => {
+      if (dateKey(new Date()) === today) void checkNudge(due).catch(() => {
+        // A later foreground check can retry an unavailable database or service worker.
+      })
+    }
+    check()
+    const timer = window.setInterval(check, 30_000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    navigator.serviceWorker?.addEventListener('controllerchange', check)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+      navigator.serviceWorker?.removeEventListener('controllerchange', check)
+    }
+  }, [entries, permission, reminders, today])
   const selectedItem = entries?.find(({ item }) => item.id === selected)
   const showingDetail = tab === 'today' && selectedItem
 
@@ -126,7 +197,11 @@ export function App() {
             onLog={(date) => markDone(selectedItem.item, date)} onDeleteLog={deleteLog} />
         )}
         {tab === 'add' && <Add today={today} items={snapshot?.items ?? null} onCustomAdded={() => selectTab('today')} />}
-        {tab === 'settings' && <h1 className="text-2xl font-extrabold">Settings</h1>}
+        {tab === 'settings' && (
+          <Settings reminders={reminders} onChange={updateReminders} permission={permission}
+            onPermissionRequest={requestPermission} install={install}
+            onRestored={() => { setNotice(null); setError('') }} />
+        )}
       </main>
       <div className={`pointer-events-none fixed inset-x-0 z-20 mx-auto max-w-[488px] px-4 ${showingDetail
         ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'

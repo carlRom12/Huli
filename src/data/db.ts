@@ -2,11 +2,12 @@ import Dexie, { type Table } from 'dexie'
 import { addDays } from 'date-fns'
 import { dateKey, parseDateKey } from './dates'
 import { seedDemoOnCreate } from './demo'
+import type { SettingsRow } from './reminderSettings'
 import { itemIcons, type Item, type Log } from './types'
 
 type ItemFields = Pick<Item, 'name' | 'icon' | 'defaultIntervalDays'>
 
-function normalizeItem(fields: ItemFields, now = new Date()): ItemFields {
+export function normalizeItem(fields: ItemFields, now = new Date()): ItemFields {
   const name = fields.name.trim()
   if (!name) throw new RangeError('Enter an item name.')
   if (!itemIcons.includes(fields.icon)) throw new RangeError('Choose an item icon.')
@@ -19,7 +20,7 @@ function normalizeItem(fields: ItemFields, now = new Date()): ItemFields {
   return { name, icon: fields.icon, defaultIntervalDays: fields.defaultIntervalDays }
 }
 
-function validateDoneOn(doneOn: string, now: Date): void {
+export function validateDoneOn(doneOn: string, now: Date): void {
   parseDateKey(doneOn)
   if (doneOn > dateKey(now)) throw new RangeError('Choose today or an earlier date.')
 }
@@ -27,6 +28,7 @@ function validateDoneOn(doneOn: string, now: Date): void {
 export class HuliDatabase extends Dexie {
   items!: Table<Item, string>
   logs!: Table<Log, string>
+  settings!: Table<SettingsRow, SettingsRow['id']>
 
   constructor(name = 'huli') {
     super(name)
@@ -34,6 +36,7 @@ export class HuliDatabase extends Dexie {
       items: 'id',
       logs: 'id, [itemId+doneOn]',
     })
+    this.version(2).stores({ settings: 'id' })
   }
 
   async createItem(fields: ItemFields, lastDone: string | null, now = new Date(), id: string = crypto.randomUUID()): Promise<Item> {
