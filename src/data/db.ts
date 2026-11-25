@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import { dateKey, parseDateKey } from './dates'
+import { seedDemoOnCreate } from './demo'
 import { itemIcons, type Item, type Log } from './types'
 
 type ItemFields = Pick<Item, 'name' | 'icon' | 'defaultIntervalDays'>
@@ -88,4 +89,5 @@ export class HuliDatabase extends Dexie {
   }
 }
 
-export const db = new HuliDatabase()
+export const db = new HuliDatabase(import.meta.env.DEV ? 'huli-development' : 'huli')
+if (import.meta.env.DEV) seedDemoOnCreate(db)
